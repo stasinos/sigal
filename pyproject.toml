@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=64", "wheel", "setuptools_scm[toml]>=3.4"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+write_to = "src/sigal/version.py"
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+preview = true
+skip-string-normalization = true

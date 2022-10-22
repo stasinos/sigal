@@ -2,17 +2,85 @@
  Changelog
 ===========
 
-Version 2.1.dev
+Version 2.4.dev
 ~~~~~~~~~~~~~~~
 
-Released on 2019-xx-xx.
+Not released yet.
+
+Version 2.3
+~~~~~~~~~~~
+
+Released on 2022-04-08.
+
+Sigal now requires Python 3.8+.
+
+- Add option ``max_img_pixels`` to allow processing huge images (sets
+  ``PIL.Image.MAX_IMAGE_PIXELS``) [:issue:`431`].
+- Add webp to the list of images formats supported by default [:issue:`433`].
+- Allow ``video_size = None`` in settings [:issue:`435`].
+- New plugin to handle non-image or video files [:issue:`434`].
+- With the galleria theme, albums can contain both images and sub-albums
+  [:issue:`438`].
+- Add original size information for 'Download ZIP' link in album [:issue:`446`].
+- Allow specifying the file date in the Markdown metadata file [:issue:`447`].
+- Add gallery title to albums' ``<title>`` [:issue:`441`].
+- Add map for all themes. This replaces the map feature that was specific to
+  the galleria theme [:issue:`450`].
+- Fix loading ``filters.py`` [:issue:`452`].
+- Fix compatibility with Click 8.1.
+- colorbox theme: avoiding holes due to non image/video files present in the
+  source directory [:issue:`455`].
+- Extend caching plugin to handle markdown and iptc metadata [:issue:`443`].
+
+Version 2.2
+~~~~~~~~~~~
+
+Released on 2021-04-18.
+
+- Convert pillow warnings to logging with filename [:issue:`394`].
+- Catch warnings when reading EXIF data.
+- Avoid crash when thumbnail cannot be generated [:issue:`401`].
+- Replace deprecated usage of `imp`.
+- Fix video thumbnail creation when delay > video length [:issue:`411`].
+- Update photoswipe to 4.4.0 [:issue:`415`].
+- Update galleria to v1.6.1 and add new themes [:issue:`417`].
+- Add ``user_css`` option to allow easier css customization [:issue:`418`].
+- Allow to specify the sort order per album.
+- Add a ``.nbmedias`` attribute to get the number of files in an album.
+- More options for vieo resizing [:issue:`420`].
+- Fixes for img_format [:issue:`421`].
+- Fix encoding issue with ffmpeg output [:issue:`423`].
+
+Version 2.1.1
+~~~~~~~~~~~~~
+
+Released on 2020-08-03.
+
+- Compatibility with Pillow 7.2
+- Fix issue with encrypt template and some Jinja2 versions [:issue:`399`].
+- Bug fixes and UI improvements for encrypt plugin [:issue:`399`].
+- Reorganize info about plugins in the template config and fix documentation
+  issues with some plugins.
+
+Version 2.1
+~~~~~~~~~~~
+
+Released on 2020-05-21.
 
 - Add setting to use relative symbolic links [:issue:`359`].
+- Add a setting to force image output format [:issue:`360`].
 - Feeds: fix links to gallery and image [:issue:`361`].
+- Improve performance when reading metadata [:issue:`362`].
 - Add new plugin to allow one to disable ZIP generation on a per album basis
   with a ``.nozip_gallery`` file [:issue:`368`].
-- Add a quiet flag [:issue:`376`].
 - Make sure that read-only files can be copied [:issue:`375`].
+- Add a quiet flag [:issue:`376`].
+- Update photoswipe to v4.1.3
+- Improve error message when template is not found [:issue:`384`].
+- New plugin to protect gallery by encrypting image files using a password
+  [:issue:`385`].
+- Force conversion of some EXIF tags to str [:issue:`386`].
+- Use natural sorting thanks to the ``natsort`` package [:issue:`387`].
 
 Version 2.0
 ~~~~~~~~~~~
@@ -185,7 +253,7 @@ Released on 2014-12-07.
 - Fix the title which was not unicode when using the settings file [:issue:`104`].
 - Add more info on how the report a bug or contribute [:issue:`128`].
 - Add more commands to the Makefile.
-- Add `coveralls.io <https://coveralls.io/r/saimn/sigal?branch=master>`_
+- Use coveralls.io
 - New plugin to upload generated gallery to Amazon S3 [:issue:`114`].
 - Handling of empty markdown or missing meta-data [:issue:`120`].
 - Include plugins in the distributed package [:issue:`117`].

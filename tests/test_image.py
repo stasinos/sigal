@@ -1,33 +1,48 @@
 import os
-import PIL
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import Mock, patch
-from PIL import Image
+from PIL import Image as PILImage
 
 from sigal import init_logging
-from sigal.image import (generate_image, generate_thumbnail, get_exif_tags,
-                         get_exif_data, get_size, process_image, get_iptc_data)
-from sigal.settings import create_settings, Status
+from sigal.gallery import Image
+from sigal.image import (
+    generate_image,
+    generate_thumbnail,
+    get_exif_data,
+    get_exif_tags,
+    get_image_metadata,
+    get_iptc_data,
+    get_size,
+    process_image,
+)
+from sigal.settings import Status, create_settings
 
 CURRENT_DIR = os.path.dirname(__file__)
+SRCDIR = os.path.join(CURRENT_DIR, 'sample', 'pictures')
 TEST_IMAGE = 'KeckObservatory20071020.jpg'
-SRCFILE = os.path.join(CURRENT_DIR, 'sample', 'pictures', 'dir2', TEST_IMAGE)
+SRCFILE = os.path.join(SRCDIR, 'dir2', TEST_IMAGE)
 
 TEST_GIF_IMAGE = 'example.gif'
-SRC_GIF_FILE = os.path.join(CURRENT_DIR, 'sample', 'pictures',
-                            'dir1', 'test1', TEST_GIF_IMAGE)
+SRC_GIF_FILE = os.path.join(SRCDIR, 'dir1', 'test1', TEST_GIF_IMAGE)
 
 
 def test_process_image(tmpdir):
     "Test the process_image function."
 
-    status = process_image('foo.txt', 'none.txt', {})
+    status = process_image(Image('foo.txt', 'bar', create_settings()))
     assert status == Status.FAILURE
 
-    settings = create_settings(img_processor='ResizeToFill', make_thumbs=False)
-    status = process_image(SRCFILE, str(tmpdir), settings)
+    settings = create_settings(
+        img_processor='ResizeToFill',
+        make_thumbs=False,
+        source=os.path.join(SRCDIR, 'dir2'),
+        destination=str(tmpdir),
+    )
+    image = Image(TEST_IMAGE, '.', settings)
+    status = process_image(image)
     assert status == Status.SUCCESS
-    im = Image.open(os.path.join(str(tmpdir), TEST_IMAGE))
+    im = PILImage.open(os.path.join(str(tmpdir), TEST_IMAGE))
     assert im.size == settings['img_size']
 
 
@@ -36,12 +51,30 @@ def test_generate_image(tmpdir):
 
     dstfile = str(tmpdir.join(TEST_IMAGE))
     for i, size in enumerate([(600, 600), (300, 200)]):
-        settings = create_settings(img_size=size, img_processor='ResizeToFill',
-                                   copy_exif_data=True)
+        settings = create_settings(
+            img_size=size, img_processor='ResizeToFill', copy_exif_data=True
+        )
         options = None if i == 0 else {'quality': 85}
         generate_image(SRCFILE, dstfile, settings, options=options)
-        im = Image.open(dstfile)
+        im = PILImage.open(dstfile)
         assert im.size == size
+
+
+def test_generate_image_imgformat(tmpdir):
+    "Test the effects of the img_format setting on generate_image."
+
+    dstfile = str(tmpdir.join(TEST_IMAGE))
+    for i, outfmt in enumerate(["JPEG", "PNG", "TIFF"]):
+        settings = create_settings(
+            img_size=(300, 300),
+            img_processor='ResizeToFill',
+            copy_exif_data=True,
+            img_format=outfmt,
+        )
+        options = {'quality': 85}
+        generate_image(SRCFILE, dstfile, settings, options=options)
+        im = PILImage.open(dstfile)
+        assert im.format == outfmt
 
 
 def test_resize_image_portrait(tmpdir):
@@ -50,11 +83,13 @@ def test_resize_image_portrait(tmpdir):
     settings = create_settings(img_size=size)
 
     portrait_image = 'm57_the_ring_nebula-587px.jpg'
-    portrait_src = os.path.join(CURRENT_DIR, 'sample', 'pictures', 'dir2', portrait_image)
+    portrait_src = os.path.join(
+        CURRENT_DIR, 'sample', 'pictures', 'dir2', portrait_image
+    )
     portrait_dst = str(tmpdir.join(portrait_image))
 
     generate_image(portrait_src, portrait_dst, settings)
-    im = Image.open(portrait_dst)
+    im = PILImage.open(portrait_dst)
 
     # In the default mode, PILKit resizes in a way to never make an image
     # smaller than either of the lengths, the other is scaled accordingly.
@@ -62,16 +97,19 @@ def test_resize_image_portrait(tmpdir):
     assert im.size[0] == 200
 
     landscape_image = 'KeckObservatory20071020.jpg'
-    landscape_src = os.path.join(CURRENT_DIR, 'sample', 'pictures', 'dir2', landscape_image)
+    landscape_src = os.path.join(
+        CURRENT_DIR, 'sample', 'pictures', 'dir2', landscape_image
+    )
     landscape_dst = str(tmpdir.join(landscape_image))
 
     generate_image(landscape_src, landscape_dst, settings)
-    im = Image.open(landscape_dst)
+    im = PILImage.open(landscape_dst)
     assert im.size[1] == 200
 
 
-@pytest.mark.parametrize(("image", "path"), [(TEST_IMAGE, SRCFILE),
-                                             (TEST_GIF_IMAGE, SRC_GIF_FILE)])
+@pytest.mark.parametrize(
+    ("image", "path"), [(TEST_IMAGE, SRCFILE), (TEST_GIF_IMAGE, SRC_GIF_FILE)]
+)
 def test_generate_image_passthrough(tmpdir, image, path):
     "Test the generate_image function with use_orig=True."
 
@@ -101,8 +139,7 @@ def test_generate_image_processor(tmpdir):
 
     init_logging('sigal')
     dstfile = str(tmpdir.join(TEST_IMAGE))
-    settings = create_settings(img_size=(200, 200),
-                               img_processor='WrongMethod')
+    settings = create_settings(img_size=(200, 200), img_processor='WrongMethod')
 
     with pytest.raises(SystemExit):
         generate_image(SRCFILE, dstfile, settings)
@@ -110,28 +147,31 @@ def test_generate_image_processor(tmpdir):
 
 @pytest.mark.parametrize(
     ("image", "path", "wide_size", "high_size"),
-    [(TEST_IMAGE, SRCFILE, (200, 133), (150, 100)),
-     (TEST_GIF_IMAGE, SRC_GIF_FILE, (134, 150), (150, 167))])
+    [
+        (TEST_IMAGE, SRCFILE, (200, 133), (150, 100)),
+        (TEST_GIF_IMAGE, SRC_GIF_FILE, (134, 150), (150, 168)),
+    ],
+)
 def test_generate_thumbnail(tmpdir, image, path, wide_size, high_size):
     "Test the generate_thumbnail function."
 
     dstfile = str(tmpdir.join(image))
     for size in [(200, 150), (150, 200)]:
         generate_thumbnail(path, dstfile, size)
-        im = Image.open(dstfile)
+        im = PILImage.open(dstfile)
         assert im.size == size
 
-    for size, thumb_size in [((200, 150), wide_size),
-                             ((150, 200), high_size)]:
+    for size, thumb_size in [((200, 150), wide_size), ((150, 200), high_size)]:
         generate_thumbnail(path, dstfile, size, fit=False)
-        im = Image.open(dstfile)
+        im = PILImage.open(dstfile)
         assert im.size == thumb_size
 
 
 def test_get_exif_tags():
     test_image = '11.jpg'
-    src_file = os.path.join(CURRENT_DIR, 'sample', 'pictures', 'dir1', 'test1',
-                            test_image)
+    src_file = os.path.join(
+        CURRENT_DIR, 'sample', 'pictures', 'dir1', 'test1', test_image
+    )
     data = get_exif_data(src_file)
     simple = get_exif_tags(data, datetime_format='%d/%m/%Y')
     assert simple['fstop'] == 3.9
@@ -139,9 +179,10 @@ def test_get_exif_tags():
     assert simple['iso'] == 50
     assert simple['Make'] == 'NIKON'
     assert simple['datetime'] == '22/01/2006'
-    if PIL.PILLOW_VERSION == '3.0.0':
-        assert simple['exposure'] == 0.00100603
-    else:
+    try:
+        # Pillow 7.2+
+        assert simple['exposure'] == '0.00100603'
+    except Exception:
         assert simple['exposure'] == '100603/100000000'
 
     data = {'FNumber': [1, 0], 'FocalLength': [1, 0], 'ExposureTime': 10}
@@ -150,11 +191,16 @@ def test_get_exif_tags():
     assert 'focal' not in simple
     assert simple['exposure'] == '10'
 
-    data = {'ExposureTime': '--', 'DateTimeOriginal': '---',
-            'GPSInfo': {'GPSLatitude': ((34, 0), (1, 0), (4500, 100)),
-                        'GPSLatitudeRef': 'N',
-                        'GPSLongitude': ((116, 0), (8, 0), (3900, 100)),
-                        'GPSLongitudeRef': 'W'}}
+    data = {
+        'ExposureTime': '--',
+        'DateTimeOriginal': '---',
+        'GPSInfo': {
+            'GPSLatitude': ((34, 0), (1, 0), (4500, 100)),
+            'GPSLatitudeRef': 'N',
+            'GPSLongitude': ((116, 0), (8, 0), (3900, 100)),
+            'GPSLongitudeRef': 'W',
+        },
+    }
     simple = get_exif_tags(data)
     assert 'exposure' not in simple
     assert 'datetime' not in simple
@@ -163,35 +209,45 @@ def test_get_exif_tags():
 
 def test_get_iptc_data(caplog):
     test_image = '1.jpg'
-    src_file = os.path.join(CURRENT_DIR, 'sample', 'pictures', 'iptcTest',
-                            test_image)
+    src_file = os.path.join(CURRENT_DIR, 'sample', 'pictures', 'iptcTest', test_image)
     data = get_iptc_data(src_file)
     # Title
-    assert data["title"] == 'Haemostratulus clouds over Canberra - ' + \
-            '2005-12-28 at 03-25-07'
+    assert (
+        data["title"]
+        == 'Haemostratulus clouds over Canberra - ' + '2005-12-28 at 03-25-07'
+    )
     # Description
-    assert data["description"] == '"Haemo" because they look like haemoglobin ' + \
-            'cells and "stratulus" because I can\'t work out whether ' + \
-            'they\'re Stratus or Cumulus clouds.\nWe\'re driving down ' + \
-            'the main drag in Canberra so it\'s Parliament House that ' + \
-            'you can see at the end of the road.'
+    assert (
+        data["description"]
+        == '"Haemo" because they look like haemoglobin '
+        + 'cells and "stratulus" because I can\'t work out whether '
+        + 'they\'re Stratus or Cumulus clouds.\nWe\'re driving down '
+        + 'the main drag in Canberra so it\'s Parliament House that '
+        + 'you can see at the end of the road.'
+    )
     # This file has no IPTC data
     test_image = '21.jpg'
-    src_file = os.path.join(CURRENT_DIR, 'sample', 'pictures', 'exifTest',
-                            test_image)
+    src_file = os.path.join(CURRENT_DIR, 'sample', 'pictures', 'exifTest', test_image)
     assert get_iptc_data(src_file) == {}
 
     # Headline
     test_image = '3.jpg'
-    src_file = os.path.join(CURRENT_DIR, 'sample', 'pictures', 'iptcTest',
-                            test_image)
+    src_file = os.path.join(CURRENT_DIR, 'sample', 'pictures', 'iptcTest', test_image)
     data = get_iptc_data(src_file)
     assert data["headline"] == 'Ring Nebula, M57'
 
     # Test catching the SyntaxError -- assert output
     with patch('sigal.image.IptcImagePlugin.getiptcinfo', side_effect=SyntaxError):
-            get_iptc_data(src_file)
-            assert ['IPTC Error in'] == [ log.message[:13] for log in caplog.records ]
+        get_iptc_data(src_file)
+        assert ['IPTC Error in'] == [log.message[:13] for log in caplog.records]
+
+
+def test_get_image_metadata_exceptions():
+    # image does not exist
+    test_image = 'bad_image.jpg'
+    src_file = os.path.join(CURRENT_DIR, 'sample', test_image)
+    data = get_image_metadata(src_file)
+    assert data == {'exif': {}, 'iptc': {}, 'size': {}}
 
 
 def test_iso_speed_ratings():
@@ -218,8 +274,9 @@ def test_exif_copy(tmpdir):
     "Test if EXIF data can transferred copied to the resized image."
 
     test_image = '11.jpg'
-    src_file = os.path.join(CURRENT_DIR, 'sample', 'pictures', 'dir1', 'test1',
-                            test_image)
+    src_file = os.path.join(
+        CURRENT_DIR, 'sample', 'pictures', 'dir1', 'test1', test_image
+    )
     dst_file = str(tmpdir.join(test_image))
 
     settings = create_settings(img_size=(300, 400), copy_exif_data=True)
@@ -233,14 +290,13 @@ def test_exif_copy(tmpdir):
     assert not simple
 
 
-@pytest.mark.xfail(PIL.PILLOW_VERSION == '3.0.0',
-                   reason="Pillow 3.0.0 was broken")
 def test_exif_gps(tmpdir):
     """Test reading out correct geo tags"""
 
     test_image = 'flickr_jerquiaga_2394751088_cc-by-nc.jpg'
-    src_file = os.path.join(CURRENT_DIR, 'sample', 'pictures', 'dir1', 'test1',
-                            test_image)
+    src_file = os.path.join(
+        CURRENT_DIR, 'sample', 'pictures', 'dir1', 'test1', test_image
+    )
     dst_file = str(tmpdir.join(test_image))
 
     settings = create_settings(img_size=(400, 300), copy_exif_data=True)
@@ -259,8 +315,9 @@ def test_get_size(tmpdir):
     """Test reading out image size"""
 
     test_image = 'flickr_jerquiaga_2394751088_cc-by-nc.jpg'
-    src_file = os.path.join(CURRENT_DIR, 'sample', 'pictures', 'dir1', 'test1',
-                            test_image)
+    src_file = os.path.join(
+        CURRENT_DIR, 'sample', 'pictures', 'dir1', 'test1', test_image
+    )
 
     result = get_size(src_file)
     assert result == {'height': 800, 'width': 600}

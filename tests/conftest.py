@@ -1,8 +1,9 @@
-import blinker
 import os
+import shutil
+
+import blinker
 import PIL
 import pytest
-import shutil
 
 from sigal import signals
 from sigal.settings import read_settings
@@ -39,4 +40,4 @@ def disconnect_signals():
 
 
 def pytest_report_header(config):
-    return "project deps: Pillow-{}".format(PIL.PILLOW_VERSION)
+    return f"project deps: Pillow-{PIL.__version__}"

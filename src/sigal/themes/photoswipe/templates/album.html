@@ -13,7 +13,6 @@
   {% include 'map.html' %}
   <div class="gallery" itemscope itemtype="http://schema.org/ImageGallery">
     {% for media in album.medias %}
-      {% if media.type == "image" %}
         <figure class="gallery__img--{{ "main" if loop.first else "secondary" }} thumbnail"
                 itemprop="associatedMedia" itemscope itemtype="http://schema.org/ImageObject">
           <a href="{{ media.url }}" itemprop="contentUrl" data-size="{{media.size.width}}x{{media.size.height}}">
@@ -21,21 +20,8 @@
                  data-echo="{{ media.url if loop.first else media.thumbnail }}"
                  alt="{{ media.url }}" itemprop="thumbnail" title="{{ media.exif.datetime }}" />
           </a>
-          <figcaption itemprop="caption description">{{ media.title }} - {{ media.exif.datetime }}</figcaption>
+          <figcaption itemprop="caption description">{{ media.description }}</figcaption>
         </figure>
-      {% endif %}
-      {% if media.type == "video" %}
-        <figure class="gallery__img--secondary thumbnail"
-                itemprop="associatedMedia" itemscope itemtype="http://schema.org/ImageObject">
-          <a href="{{ media.url }}" itemprop="contentUrl" data-type="video"
-             data-video='<div class="video"><div class="video__container"><video controls><source src="{{ media.url }}" type="{{ media.mime }}" /></video></div></div>'>
-          <img src="{{ theme.url }}/echo/blank.gif"
-               data-echo="{{ media.thumbnail }}"
-               alt="{{ media.thumbnail }}" itemprop="thumbnail" title="" />
-          </a>
-          <figcaption itemprop="caption description">{{ media_title }}</figcaption>
-        </figure>
-      {% endif %}
     {% endfor %}
   </div>
 

@@ -20,7 +20,14 @@
     {% include 'decrypt.html' %}
     {% include 'gtm.html' %}
     <div class="container">
-      <h1><a href="{{ album.index_url }}">{{ index_title }}</a></h1>
+      {% if settings.site_logo %}
+      <h1 style="position: relative;top: 18px;left: 10px;">
+	<img src="{{ theme.url }}/{{ settings.site_logo }}" style="float:left;width:auto !important;height:120px !important;" alt="logo">
+        <a href="{{ album.index_url }}"> {{ index_title }} </a>
+      </h1>
+      {% else %}
+        <h1><a href="{{ album.index_url }}"> {{ index_title }} </a></h1>
+      {% endif %}
 
       {% include 'links.html' %}
 
